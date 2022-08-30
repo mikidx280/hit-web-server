@@ -3,7 +3,7 @@ node {
 
     docker.withRegistry('https://registry.hub.docker.com','dockerhub') {
 
-        def customImage = docker.build("mikidx280/hit-web-server:2.1.1")
+        def customImage = docker.build("mikidx280/hit-web-server:2.1.2")
         
         customImage.push()
     }
