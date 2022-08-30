@@ -1,3 +1,2 @@
 FROM nginx:alpine
-COPY index.html /usr/share/nginx/html 
-EXPOSE 2220
+COPY index.html /usr/share/nginx/html
