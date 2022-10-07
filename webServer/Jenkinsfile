@@ -1,0 +1,150 @@
+pipeline {
+    agent any
+    
+ 
+    
+    triggers {
+        pollSCM("* * * * *")
+    }
+    
+    tools{
+        gradle '7.4.2'
+    }
+    
+
+    stages {
+    stage('checkout') {
+        options{
+            timeout(time:3,unit:'MINUTES')
+        }
+            steps {
+                
+                checkout([$class: 'GitSCM', branches: [[name: '*/master']], extensions: [], userRemoteConfigs: [[credentialsId: 'bc17aeb2-dbcc-4a8d-8f10-b45f4167edf5', url: 'git@github.com:mikidx280/hit-web-server.git']]])
+            }
+        }
+    stage('Docker build'){
+                options{
+            timeout(time:3,unit:'MINUTES')
+        }
+            steps{
+            dir('./webServer'){
+             script{
+                jobName=env.JOB_BASE_NAME
+                ImageName='mikidx280/'+jobName+':2.1.2'
+                DockerImage=docker.build(ImageName)
+             }
+            }
+        }
+    }
+    stage('Docker push') {
+        options{
+            timeout(time:3,unit:'MINUTES')
+        }
+
+			steps {
+			    script{
+			        
+			        docker.withRegistry('https://registry.hub.docker.com','dockerhub'){
+			         DockerImage.push()
+			        }
+			    }
+			
+			}
+	}
+
+    stage('application-qa'){
+        options{
+            timeout(time:3,unit:'MINUTES')
+        }
+            steps{
+            dir('./webServer'){
+             script{
+                
+                println('Runing the APP fot the qa at port 2020')
+                
+                ImageName='mikidx280/application-qa'
+                DockerImage=docker.build(ImageName)
+                DockerImage.run('-p 2020:80')
+                
+             }
+            }
+        }
+    }
+	
+    
+    
+	stage('Selenuim + Rest assured + Junit report'){
+                options{
+            timeout(time:5,unit:'MINUTES')
+        }
+            steps{
+                dir('./automation'){
+             withGradle {
+          //bat 'gradle clean build'
+          bat 'gradle test'
+           junit  checksName:'Tests', testResults:'**/build/test-results/test/TEST-*.xml'
+        }
+      
+        }
+     }
+     post{
+         success{
+             echo "test passed :)"
+        script{
+        currentBuild.result='SUCCESS'
+        
+        stdout = bat(returnStdout:true, script: 'git describe --tags --abbrev=0').trim()
+        result=stdout.readLines().drop(1).join(" ")
+        
+        if(result.contains('v')){
+            println("the project include tag v")
+        } else{
+           println("does not include tag v working")
+           
+           currentBuild.result='FAILURE'
+           
+        }
+                }
+             
+         }
+         failure{
+             echo "test failed ):"
+            script{
+                    currentBuild.result='FAILURE'
+                }
+         }
+         always{
+             echo "test result"
+         }
+     }
+     
+             
+
+
+            
+       }
+    stage('Application-prod') {
+        options{
+            timeout(time:3,unit:'MINUTES')
+        }
+            when{
+                expression{result.contains('v')}
+                
+            }
+            steps {
+                dir('./webServer'){
+            script{
+                println("runing the App-prod at localhost:2030")
+                ImageName='mikidx280/application-prod'
+                DockerImage=docker.build(ImageName)
+                DockerImage.run('-p 2030:80')
+        
+    }
+  }
+            }
+        
+ }
+
+}
+
+}
