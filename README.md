@@ -11,7 +11,7 @@
  
 # D: Run the App at the QA, Port 2020
 
-# E: Run Tests (Sekenium + Rest Assured + Junit Report)
+# E: Run Tests (Selenium + Rest Assured + Junit Report)
 
 # F: Prodaction (If there is tag v* and the app has pass the tests)
 
